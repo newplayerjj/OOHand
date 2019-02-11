@@ -467,3 +467,15 @@ def non_eager_mode_test():
                         inp2:np.random.rand(8,128,128,64),
                    })
     print(res)
+
+def eager_mode_test():
+    tf.enable_eager_execution()
+    model = TestNetwork(['input1', 'input2'], ['result'])
+    res = model({
+                    'input1': tf.cast(np.random.rand(8,128,128,32), tf.float32), 
+                    'input2': tf.cast(np.random.rand(8,128,128,64), tf.float32),
+               })
+    print(res)
+
+if __name__ == "__main__":
+    eager_mode_test()

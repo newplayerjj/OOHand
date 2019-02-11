@@ -29,7 +29,7 @@ from tensorpack.dataflow.parallel import PrefetchData
 from tensorpack.dataflow.base import RNGDataFlow, DataFlowTerminated
 
 from pose_augment import pose_flip, pose_rotation, pose_to_img, pose_crop_random, \
-    pose_resize_shortestedge_random, pose_resize_shortestedge_fixed, pose_crop_center, pose_random_scale
+    pose_resize_shortestedge_random, pose_resize_shortestedge_fixed, pose_crop_center, pose_random_scale, crop_hand_roi_fix
 
 logging.getLogger("requests").setLevel(logging.WARNING)
 logger = logging.getLogger('pose_dataset')
@@ -43,7 +43,7 @@ logger.addHandler(ch)
 mplset = False
 
 class OOHandMataData:
-    __hand_parts = 21
+    __hand_parts = 22
     def __init__(self, idx, img_url, img_meta, annotations, sigma):
         self.idx = idx
         self.img_url = img_url
@@ -55,7 +55,7 @@ class OOHandMataData:
 
         self.joint_list = []
         for x, y, v in annotations:
-            self.joint_list.append([x, y] if v == 1 else (-1000, -1000))
+            self.joint_list.append([int(round(x)), int(round(y))] if v == 1 else (-1000, -1000))
 
     def get_heatmap(self, target_size):
         heatmap = np.zeros((OOHandMataData.__hand_parts, self.height, self.width), dtype=np.float32)
@@ -238,9 +238,14 @@ def get_dataflow(path, is_train, img_path=None):
         '''
 
         ds = MapData(ds, read_image_url)
-        # use joint_list to draw two point and vector heatmap
+        ds = MapDataComponent(ds, crop_hand_roi_fix)
+        ds = MapDataComponent(ds, pose_random_scale)
+        ds = MapDataComponent(ds, pose_rotation)
+        ds = MapDataComponent(ds, pose_flip)
+        ds = MapDataComponent(ds, pose_resize_shortestedge_random)
+        ds = MapDataComponent(ds, pose_crop_random)
         ds = MapData(ds, pose_to_img)
-        ds = PrefetchData(ds, 2, 1)
+        ds = PrefetchData(ds, 5, 2)
     else:
         ds = MultiThreadMapData(ds, nr_thread=1, map_func=read_image_url, buffer_size=5)
         ds = MapDataComponent(ds, pose_resize_shortestedge_fixed)
@@ -254,8 +259,14 @@ def get_dataflow(path, is_train, img_path=None):
 def _get_dataflow_onlyread(path, is_train, img_path=None):
     ds = OpenOoseHand(path, is_train)  # read data from lmdb
     ds = MapData(ds, read_image_url)
+    ds = MapDataComponent(ds, crop_hand_roi_fix)
+    ds = MapDataComponent(ds, pose_random_scale)
+    ds = MapDataComponent(ds, pose_rotation)
+    ds = MapDataComponent(ds, pose_flip)
+    ds = MapDataComponent(ds, pose_resize_shortestedge_random)
+    ds = MapDataComponent(ds, pose_crop_random)
     ds = MapData(ds, pose_to_img)
-    # ds = PrefetchData(ds, 1000, multiprocessing.cpu_count() * 4)
+    ds = PrefetchData(ds, 10, 2)
     return ds
 
 
@@ -346,8 +357,8 @@ if __name__ == '__main__':
 
     from pose_augment import set_network_input_wh, set_network_scale
     # set_network_input_wh(368, 368)
-    set_network_input_wh(480, 320)
-    set_network_scale(8)
+    set_network_input_wh(368, 368)
+    set_network_scale(1)
 
     # df = get_dataflow('/data/public/rw/coco/annotations', True, '/data/public/rw/coco/')
     df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
