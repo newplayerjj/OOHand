@@ -79,7 +79,7 @@ def layer(op):
     return layer_decorated
 
 class BaseNetwork(tf.keras.Model):
-    def __init__(self, inputs, eager_output_names=[], trainable=True):
+    def __init__(self, inputs, eager_output_names, trainable=True):
         '''
         Arguments:
             tf {[type]} -- [description]
@@ -95,8 +95,9 @@ class BaseNetwork(tf.keras.Model):
             trainable {bool}
                 Control if batch norm trainable
         '''
-
+    
         super(BaseNetwork, self).__init__()
+
         if tf.executing_eagerly():
             self.layer_ops = {}
             for inp_name in inputs:
@@ -123,7 +124,7 @@ class BaseNetwork(tf.keras.Model):
         self.trainable = trainable
 
         self.setup()
-
+            
     @abc.abstractmethod
     def setup(self):
         '''Construct the network. '''
@@ -325,27 +326,26 @@ class BaseNetwork(tf.keras.Model):
         '''
         use_bias = (not use_bn) and (use_bn is not None)
 
-        with tf.variable_scope(name) as scope:
-            convol = tf.keras.layers.Conv2D(filters=filters, 
-                                            kernel_size=kernel_size, 
-                                            strides=strides,
-                                            padding=padding,
-                                            dilation_rate=dilation_rate,
-                                            activation=None,
-                                            use_bias=use_bias,
-                                            kernel_initializer=kernel_initializer,
-                                            kernel_regularizer=kernel_regularizer,
-                                            name='Conv2D')
+        convol = tf.keras.layers.Conv2D(filters=filters, 
+                                        kernel_size=kernel_size, 
+                                        strides=strides,
+                                        padding=padding,
+                                        dilation_rate=dilation_rate,
+                                        activation=None,
+                                        use_bias=use_bias,
+                                        kernel_initializer=kernel_initializer,
+                                        kernel_regularizer=kernel_regularizer,
+                                        name='Conv2D')
 
-            bn = None
-            if use_bn:
-                bn = tf.keras.layers.BatchNormalization(axis=-1,
-                                                        momentum=0.99,
-                                                        epsilon=0.001,
-                                                        center=True,
-                                                        scale=True,
-                                                        trainable=self.trainable,
-                                                        name='BatchNorm')
+        bn = None
+        if use_bn:
+            bn = tf.keras.layers.BatchNormalization(axis=-1,
+                                                    momentum=0.99,
+                                                    epsilon=0.001,
+                                                    center=True,
+                                                    scale=True,
+                                                    trainable=self.trainable,
+                                                    name='BatchNorm')
 
         def conv(inps):
             res = convol(inps)
@@ -371,46 +371,45 @@ class BaseNetwork(tf.keras.Model):
                        name=None):
         use_bias = (not use_bn) and (use_bn is not None)
 
-        with tf.variable_scope(name) as scope:
-            depth_conv = tf.keras.layers.DepthwiseConv2D(kernel_size=kernel_size,
-                                                         strides=strides,
-                                                         padding=padding,
-                                                         depth_multiplier=1,
-                                                         activation=None,
-                                                         use_bias=use_bias,
-                                                         depthwise_initializer=kernel_initializer,
-                                                         depthwise_regularizer=kernel_regularizer,
-                                                         name='Depthwise2D')
-            depth_bn = None
-            if use_bn:
-                depth_bn = tf.keras.layers.BatchNormalization(axis=-1,
-                                                              momentum=0.99,
-                                                              epsilon=0.001,
-                                                              center=True,
-                                                              scale=True,
-                                                              trainable=self.trainable,
-                                                              name='Depthwise2D_BatchNorm')
+        depth_conv = tf.keras.layers.DepthwiseConv2D(kernel_size=kernel_size,
+                                                        strides=strides,
+                                                        padding=padding,
+                                                        depth_multiplier=1,
+                                                        activation=None,
+                                                        use_bias=use_bias,
+                                                        depthwise_initializer=kernel_initializer,
+                                                        depthwise_regularizer=kernel_regularizer,
+                                                        name='Depthwise2D')
+        depth_bn = None
+        if use_bn:
+            depth_bn = tf.keras.layers.BatchNormalization(axis=-1,
+                                                            momentum=0.99,
+                                                            epsilon=0.001,
+                                                            center=True,
+                                                            scale=True,
+                                                            trainable=self.trainable,
+                                                            name='Depthwise2D_BatchNorm')
 
-            conv = tf.keras.layers.Conv2D(filters=filters, 
-                                          kernel_size=1, 
-                                          strides=(1,1),
-                                          padding=padding,
-                                          dilation_rate=(1,1),
-                                          activation=None,
-                                          use_bias=use_bias,
-                                          kernel_initializer=kernel_initializer,
-                                          kernel_regularizer=kernel_regularizer,
-                                          name='Pointwise2D')
+        conv = tf.keras.layers.Conv2D(filters=filters, 
+                                        kernel_size=1, 
+                                        strides=(1,1),
+                                        padding=padding,
+                                        dilation_rate=(1,1),
+                                        activation=None,
+                                        use_bias=use_bias,
+                                        kernel_initializer=kernel_initializer,
+                                        kernel_regularizer=kernel_regularizer,
+                                        name='Pointwise2D')
 
-            conv_bn = None
-            if use_bn:
-                conv_bn = tf.keras.layers.BatchNormalization(axis=-1,
-                                                             momentum=0.99,
-                                                             epsilon=0.001,
-                                                             center=True,
-                                                             scale=True,
-                                                             trainable=self.trainable,
-                                                             name='Pointwise2D_BatchNorm')
+        conv_bn = None
+        if use_bn:
+            conv_bn = tf.keras.layers.BatchNormalization(axis=-1,
+                                                            momentum=0.99,
+                                                            epsilon=0.001,
+                                                            center=True,
+                                                            scale=True,
+                                                            trainable=self.trainable,
+                                                            name='Pointwise2D_BatchNorm')
 
         def separable_conv(inps):
             res = depth_conv(inps)
@@ -468,15 +467,3 @@ def non_eager_mode_test():
                         inp2:np.random.rand(8,128,128,64),
                    })
     print(res)
-
-def eager_mode_test():
-    tf.enable_eager_execution()
-    model = TestNetwork(['input1', 'input2'], ['result'])
-    res = model({
-                    'input1': tf.cast(np.random.rand(8,128,128,32), tf.float32), 
-                    'input2': tf.cast(np.random.rand(8,128,128,64), tf.float32),
-               })
-    print(res)
-
-if __name__ == "__main__":
-    eager_mode_test()
