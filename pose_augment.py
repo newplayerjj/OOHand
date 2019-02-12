@@ -5,12 +5,14 @@ import cv2
 import numpy as np
 from tensorpack.dataflow.imgaug.geometry import RotationAndCropValid
 
+import common
+
 # from tf_pose.common import CocoPart
 CocoPart = None
 
-_network_w = 368
-_network_h = 368
-_scale = 8
+_network_w = common.network_w
+_network_h = common.network_h
+_scale = common.network_scale
 
 
 def set_network_input_wh(w, h):

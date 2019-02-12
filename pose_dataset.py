@@ -31,6 +31,8 @@ from tensorpack.dataflow.base import RNGDataFlow, DataFlowTerminated
 from pose_augment import pose_flip, pose_rotation, pose_to_img, pose_crop_random, \
     pose_resize_shortestedge_random, pose_resize_shortestedge_fixed, pose_crop_center, pose_random_scale, crop_hand_roi
 
+import common
+
 logging.getLogger("requests").setLevel(logging.WARNING)
 logger = logging.getLogger('pose_dataset')
 logger.setLevel(logging.INFO)
@@ -43,7 +45,7 @@ logger.addHandler(ch)
 mplset = False
 
 class OOHandMataData:
-    __hand_parts = 22
+    __hand_parts = common.num_hand_parts
     def __init__(self, idx, img_url, img_meta, annotations, sigma):
         self.idx = idx
         self.img_url = img_url
@@ -145,6 +147,8 @@ class OpenOoseHand(RNGDataFlow):
             data = json.load(f)
         self.meta_list = data['root']
         self.prefix_zeros = 8
+        # peek self.size()
+        # import pdb; pdb.set_trace()
 
     def size(self):
         return len(self.meta_list)
@@ -351,9 +355,49 @@ class DataFlowToQueue(threading.Thread):
     def dequeue(self):
         return self.queue.dequeue()
 
+def test_enqueuer():
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    args = parser.parse_args()
+    args.input_width = common.network_w
+    args.input_height = common.network_h
+    args.batchsize = common.batchsize
+    scale = common.network_scale
+    output_w = args.input_width // scale
+    output_h = args.input_height // scale 
+    # # input_wh, scale is sync using common.py (to avoid multithread bug)
+    # set_network_input_wh(args.input_width, args.input_height)
+    # set_network_scale(scale)
+
+    with tf.device(tf.DeviceSpec(device_type="CPU")):
+        input_node = tf.placeholder(tf.float32, shape=(args.batchsize, args.input_height, args.input_width, 3), name='image')
+        heatmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, common.num_hand_parts), name='heatmap')
+        
+        df = get_dataflow_batch('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True, args.batchsize)
+        
+        enqueuer = DataFlowToQueue(df, [input_node, heatmap_node], queue_size=2)
+        q_inp, q_heat = enqueuer.dequeue()
 
 
-if __name__ == '__main__':
+    config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+    with tf.Session(config=config) as sess:
+        logger.info('prepare coordinator')
+        coord = tf.train.Coordinator()
+        enqueuer.set_coordinator(coord)
+        # 餵入資料的shape若是不對 會死在這裡
+        enqueuer.start()
+
+        inp, heat = sess.run([q_inp, q_heat])
+        print('inp.shape = %s' % str(inp.shape))
+        print('heat.shape = %s' % str(heat.shape))
+
+        for batch in range(0, args.batchsize):
+            OpenOoseHand.display_image(inp[batch], heat[batch].astype(np.float32))
+    
+        coord.request_stop()
+    
+def test_data_flow():
     os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
     from pose_augment import set_network_input_wh, set_network_scale
@@ -361,8 +405,8 @@ if __name__ == '__main__':
     set_network_input_wh(368, 368)
     set_network_scale(1)
 
-    df = get_dataflow('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
-    # df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
+    # df = get_dataflow('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
+    df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
     # df = get_dataflow('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', False)
 
     # from tensorpack.dataflow.common import TestDataSpeed
@@ -384,3 +428,6 @@ if __name__ == '__main__':
             pass
 
     logger.info('done')
+
+if __name__ == '__main__':
+     test_data_flow()
