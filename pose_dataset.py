@@ -29,7 +29,7 @@ from tensorpack.dataflow.parallel import PrefetchData
 from tensorpack.dataflow.base import RNGDataFlow, DataFlowTerminated
 
 from pose_augment import pose_flip, pose_rotation, pose_to_img, pose_crop_random, \
-    pose_resize_shortestedge_random, pose_resize_shortestedge_fixed, pose_crop_center, pose_random_scale, crop_hand_roi_fix
+    pose_resize_shortestedge_random, pose_resize_shortestedge_fixed, pose_crop_center, pose_random_scale, crop_hand_roi
 
 logging.getLogger("requests").setLevel(logging.WARNING)
 logger = logging.getLogger('pose_dataset')
@@ -238,7 +238,7 @@ def get_dataflow(path, is_train, img_path=None):
         '''
 
         ds = MapData(ds, read_image_url)
-        ds = MapDataComponent(ds, crop_hand_roi_fix)
+        ds = MapDataComponent(ds, crop_hand_roi)
         ds = MapDataComponent(ds, pose_random_scale)
         ds = MapDataComponent(ds, pose_rotation)
         ds = MapDataComponent(ds, pose_flip)
@@ -248,6 +248,7 @@ def get_dataflow(path, is_train, img_path=None):
         ds = PrefetchData(ds, 5, 2)
     else:
         ds = MultiThreadMapData(ds, nr_thread=1, map_func=read_image_url, buffer_size=5)
+        ds = MapDataComponent(ds, crop_hand_roi)
         ds = MapDataComponent(ds, pose_resize_shortestedge_fixed)
         ds = MapDataComponent(ds, pose_crop_center)
         ds = MapData(ds, pose_to_img)
@@ -259,7 +260,7 @@ def get_dataflow(path, is_train, img_path=None):
 def _get_dataflow_onlyread(path, is_train, img_path=None):
     ds = OpenOoseHand(path, is_train)  # read data from lmdb
     ds = MapData(ds, read_image_url)
-    ds = MapDataComponent(ds, crop_hand_roi_fix)
+    ds = MapDataComponent(ds, crop_hand_roi)
     ds = MapDataComponent(ds, pose_random_scale)
     ds = MapDataComponent(ds, pose_rotation)
     ds = MapDataComponent(ds, pose_flip)
@@ -360,9 +361,9 @@ if __name__ == '__main__':
     set_network_input_wh(368, 368)
     set_network_scale(1)
 
-    # df = get_dataflow('/data/public/rw/coco/annotations', True, '/data/public/rw/coco/')
-    df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
-    # df = get_dataflow('/root/coco/annotations', False, img_path='http://gpu-twg.kakaocdn.net/braincloud/COCO/')
+    df = get_dataflow('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
+    # df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
+    # df = get_dataflow('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', False)
 
     # from tensorpack.dataflow.common import TestDataSpeed
     # TestDataSpeed(df).start()

@@ -286,15 +286,15 @@ def get_hand_roi(meta):
 #         else:
 #             adjust_joint_list.append((newx, newy))
 
-def crop_hand_roi_fix(meta):
+def crop_hand_roi(meta):
     x1, y1, x2, y2 = get_hand_roi(meta)
     w = x2 - x1 + 1
     h = y2 - y1 + 1
 
-    x1 -= w * 1.5
-    y1 -= h * 1.5
-    x2 += w * 1.5
-    y2 += h * 1.5
+    x1 -= w * random.random() * 1.5
+    y1 -= h * random.random() * 1.5
+    x2 += w * random.random() * 1.5
+    y2 += h * random.random() * 1.5
 
     # make sure not to go over the image border
     x1 = int(max(x1, 0))
