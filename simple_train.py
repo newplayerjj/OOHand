@@ -30,8 +30,8 @@ parser.add_argument('--gpus', type=int, default=1)
 parser.add_argument('--max-epoch', type=int, default=30)
 # --lr give initial learning rate
 parser.add_argument('--lr', type=str, default='0.01')
-parser.add_argument('--modelpath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2/')
-parser.add_argument('--logpath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2/')
+parser.add_argument('--modelpath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-13/')
+parser.add_argument('--logpath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-13/')
 parser.add_argument('--checkpoint', type=str, default='')
 parser.add_argument('--tag', type=str, default='')
 args = parser.parse_args()
@@ -74,10 +74,12 @@ if __name__ == '__main__':
         if ',' not in args.lr:
             starter_learning_rate = float(args.lr)
             learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-                                                        decay_steps=step_per_epoch, decay_rate=0.33, staircase=True)
+                                                       decay_steps=step_per_epoch, decay_rate=0.95, staircase=True)
+                                                        # decay_steps=step_per_epoch, decay_rate=0.33, staircase=True)
         else:
             lrs = [float(x) for x in args.lr.split(',')]
-            boundaries = [step_per_epoch * 5 * i for i, _ in range(len(lrs)) if i > 0]
+            # boundaries = [step_per_epoch * 5 * i for i, _ in range(len(lrs)) if i > 0]
+            boundaries = [step_per_epoch * i for i in range(0,len(lrs)) if i > 0]
             learning_rate = tf.train.piecewise_constant(global_step, boundaries, lrs)
 
     # optimizer = tf.train.RMSPropOptimizer(learning_rate, decay=0.0005, momentum=0.9, epsilon=1e-10)
@@ -137,17 +139,27 @@ if __name__ == '__main__':
             # get dataflow
             df = get_dataflow_batch('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True, common.batchsize)
 
+            #
+            loss_history = []
+            loss_history_ll = []
+
             for step, dp in enumerate(df.get_data()):
                 inp = dp[0].astype(np.float32)
                 heat = dp[1].astype(np.float32)
 
                 _, gs_num = sess.run([train_op, global_step], {'image:0': inp,
                                                                'heatmap:0': heat})
-
+                if (gs_num - last_gs_num) % 5 == 0:                                            
+                    train_loss, train_loss_ll = sess.run([total_loss, total_loss_ll],  {'image:0': inp, 'heatmap:0': heat})
+                    loss_history.append(train_loss)
+                    loss_history_ll.append(train_loss_ll)
                 if gs_num - last_gs_num >= 100:
                     train_loss, train_loss_ll, lr_val, summary = sess.run([total_loss, total_loss_ll, learning_rate, merged_summary_op], 
                                                                           {'image:0': inp, 'heatmap:0': heat})
-
+                    loss_history.append(train_loss)
+                    loss_history_ll.append(train_loss_ll)
+                    train_loss = np.mean(loss_history)
+                    train_loss_ll = np.mean(loss_history_ll)
                     # log of training loss / accuracy
                     batch_per_sec = (gs_num - initial_gs_num) / (time.time() - time_started)
                     logger.info('epoch=%.2f step=%d, %0.4f examples/sec lr=%f, loss=%g, loss_ll=%g' % (gs_num / step_per_epoch, gs_num, batch_per_sec * common.batchsize, lr_val, train_loss, train_loss_ll))
