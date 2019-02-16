@@ -289,18 +289,22 @@ class HandPose:
         if not self.is_pred_init:
             self.init_predict_model()
 
-        scale = 368/image_orig.shape[1]
-        scale = scale*scale_mul
+        # scale = 368/image_orig.shape[1]
+        # scale = scale*scale_mul
         ###
-        image = cv2.resize(image_orig, (0,0), fx=scale, fy=scale) 
+        # image = cv2.resize(image_orig, (0,0), fx=scale, fy=scale) 
+        image = image_orig
         # net_out.shape = input_tensor.shape / self.netscale
         net_out = self.sess.run(self.peaks_tensor, feed_dict={self.input_tensor: np.expand_dims( image /256 -0.5 ,0)})[0]
 
+        # OpenOoseHand.display_image(image, net_out); return
+        
         peaks = np.argwhere(net_out >= 0.1)
-        parts = [[] for i in range(22)]
+        parts = [[] for i in range(21)]
         for y, x, part_id in peaks:
             # y = peak[0], x = peak[1], part_id = peak[2]
-            parts[part_id].append(np.array([y, x]))
+            if part_id < len(parts):
+                parts[part_id].append(np.array([y, x]))
 
         deleted_parts = remove_redundant(parts, net_out)  
         interchange_yx_to_xy_and_scale(parts, self.netscale)  
@@ -373,8 +377,9 @@ class HandPose:
         return (left_hand_parts, right_hand_parts)
 
 from pose_augment import set_network_input_wh, set_network_scale
-    
-net_w = net_h = 368
+
+model_path = 'D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-13/mobilenet_thin_batch_8_lr_0.01_gpus_1_184x184_/'
+net_w = net_h = 184
 scale = 8
 
 set_network_input_wh(net_w, net_h)
@@ -384,13 +389,12 @@ if __name__ == '__main__':
     from networks import get_network
     from pose_dataset import _get_dataflow_onlyread, OpenOoseHand
 
-    model_path = 'D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-13/mobilenet_thin_batch_8_lr_0.01_gpus_1_368x368_/'
-
     input_node = tf.placeholder(tf.float32, shape=(1, net_h, net_w, 3), name='image')
     net, pretrain_path, last_layer = get_network('mobilenet_thin', input_node)
     net_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
 
     handpredictor = HandPose(input_node, net.loss_last(), scale, net_var_list)
+    print('load from: '+tf.train.latest_checkpoint(model_path))
     handpredictor.load_weights(tf.train.latest_checkpoint(model_path))
 
     df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
@@ -403,5 +407,4 @@ if __name__ == '__main__':
             # heat = np.expand_dims(dp[1], 0)
             inp = dp[0]
 
-            # OpenOoseHand.display_image(dp[0], dp[1].astype(np.float32))
             handpredictor.predict(inp, 1, True)
