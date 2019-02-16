@@ -24,12 +24,12 @@ import tensorflow as tf
 
 from tensorpack.dataflow import MultiThreadMapData
 from tensorpack.dataflow.image import MapDataComponent
-from tensorpack.dataflow.common import BatchData, MapData
+from tensorpack.dataflow.common import BatchData, MapData, RepeatedData
 from tensorpack.dataflow.parallel import PrefetchData
 from tensorpack.dataflow.base import RNGDataFlow, DataFlowTerminated
 
 from pose_augment import pose_flip, pose_rotation, pose_to_img, pose_crop_random, \
-    pose_resize_shortestedge_random, pose_resize_shortestedge_fixed, pose_crop_center, pose_random_scale, crop_hand_roi
+    pose_resize_shortestedge_random, pose_resize_shortestedge_fixed, pose_crop_center, pose_random_scale, crop_hand_roi_big, crop_hand_roi
 
 import common
 
@@ -83,6 +83,7 @@ class OOHandMataData:
         _, height, width = heatmap.shape[:3]
 
         th = 4.6052
+        # th = 2.3026
         delta = math.sqrt(th * 2)
 
         x0 = int(max(0, center_x - delta * sigma))
@@ -242,17 +243,18 @@ def get_dataflow(path, is_train, img_path=None):
         '''
 
         ds = MapData(ds, read_image_url)
-        ds = MapDataComponent(ds, crop_hand_roi)
+        ds = MapDataComponent(ds, crop_hand_roi_big)
         ds = MapDataComponent(ds, pose_random_scale)
         ds = MapDataComponent(ds, pose_rotation)
         ds = MapDataComponent(ds, pose_flip)
-        ds = MapDataComponent(ds, pose_resize_shortestedge_random)
-        ds = MapDataComponent(ds, pose_crop_random)
+        ds = MapDataComponent(ds, crop_hand_roi)
+        # ds = MapDataComponent(ds, pose_resize_shortestedge_fixed)
+        # ds = MapDataComponent(ds, pose_crop_random)
         ds = MapData(ds, pose_to_img)
-        ds = PrefetchData(ds, 5, 2)
+        ds = PrefetchData(ds, 20, 1)
     else:
         ds = MultiThreadMapData(ds, nr_thread=1, map_func=read_image_url, buffer_size=5)
-        ds = MapDataComponent(ds, crop_hand_roi)
+        ds = MapDataComponent(ds, crop_hand_roi_big)
         ds = MapDataComponent(ds, pose_resize_shortestedge_fixed)
         ds = MapDataComponent(ds, pose_crop_center)
         ds = MapData(ds, pose_to_img)
@@ -264,14 +266,16 @@ def get_dataflow(path, is_train, img_path=None):
 def _get_dataflow_onlyread(path, is_train, img_path=None):
     ds = OpenOoseHand(path, is_train)  # read data from lmdb
     ds = MapData(ds, read_image_url)
-    ds = MapDataComponent(ds, crop_hand_roi)
+    ds = MapDataComponent(ds, crop_hand_roi_big)
     ds = MapDataComponent(ds, pose_random_scale)
     ds = MapDataComponent(ds, pose_rotation)
     ds = MapDataComponent(ds, pose_flip)
-    ds = MapDataComponent(ds, pose_resize_shortestedge_random)
-    ds = MapDataComponent(ds, pose_crop_random)
+    ds = MapDataComponent(ds, crop_hand_roi)
+    # ds = MapDataComponent(ds, pose_resize_shortestedge_fixed)
+    # ds = MapDataComponent(ds, pose_crop_random)
     ds = MapData(ds, pose_to_img)
-    ds = PrefetchData(ds, 10, 2)
+    # ds = PrefetchData(ds, 10, 2)
+    ds = RepeatedData(ds, -1)
     return ds
 
 
@@ -279,10 +283,11 @@ def get_dataflow_batch(path, is_train, batchsize, img_path=None):
     logger.info('dataflow img_path=%s' % img_path)
     ds = get_dataflow(path, is_train, img_path=img_path)
     ds = BatchData(ds, batchsize)
+    ds = RepeatedData(ds, -1)
     if is_train:
-        ds = PrefetchData(ds, 2, 1)
+        ds = PrefetchData(ds, batchsize*2, 1)
     else:
-        ds = PrefetchData(ds, 2, 1)
+        ds = PrefetchData(ds, batchsize*2, 1)
 
     return ds
 
@@ -392,18 +397,13 @@ def test_enqueuer():
         print('inp.shape = %s' % str(inp.shape))
         print('heat.shape = %s' % str(heat.shape))
 
-        for batch in range(0, args.batchsize):
+        for batch in range(0, common.batchsize):
             OpenOoseHand.display_image(inp[batch], heat[batch].astype(np.float32))
     
         coord.request_stop()
     
 def test_data_flow():
     os.environ['CUDA_VISIBLE_DEVICES'] = ''
-
-    from pose_augment import set_network_input_wh, set_network_scale
-    # set_network_input_wh(368, 368)
-    set_network_input_wh(368, 368)
-    set_network_scale(1)
 
     # df = get_dataflow('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
     df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)

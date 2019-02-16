@@ -65,7 +65,6 @@ def pose_resize_shortestedge_random(meta):
     # target_size = int(min(_network_w, _network_h) * random.uniform(0.7, 1.5))
     return pose_resize_shortestedge(meta, target_size)
 
-
 def pose_resize_shortestedge(meta, target_size):
     global _network_w, _network_h
     img = meta.img
@@ -246,7 +245,7 @@ def _rotate_coord(shape, newxy, point, angle):
 def pose_to_img(meta_l):
     global _network_w, _network_h, _scale
     return [
-        meta_l[0].img.astype(np.float16),
+        meta_l[0].img.astype(np.float32),
         meta_l[0].get_heatmap(target_size=(_network_w // _scale, _network_h // _scale)),
     ]
 
@@ -288,21 +287,121 @@ def get_hand_roi(meta):
 #         else:
 #             adjust_joint_list.append((newx, newy))
 
-def crop_hand_roi(meta):
+def crop_hand_roi_big(meta):
+    global _network_w, _network_h
+    target_size = (_network_w, _network_h)
     x1, y1, x2, y2 = get_hand_roi(meta)
     w = x2 - x1 + 1
     h = y2 - y1 + 1
 
-    x1 -= w * random.random() * 1.5
-    y1 -= h * random.random() * 1.5
-    x2 += w * random.random() * 1.5
-    y2 += h * random.random() * 1.5
+    cx = x1 + w // 2
+    cy = y1 + h // 2
 
-    # make sure not to go over the image border
+    w = max(random.random() * w * 3 + 2, target_size[0]*2)
+    h = max(random.random() * h * 3 + h, target_size[1]*2)
+
+    x1 = cx - w // 2
+    y1 = cy - h // 2
+    x2 = x2 + w // 2
+    y2 = y2 + h // 2
+
     x1 = int(max(x1, 0))
     y1 = int(max(y1, 0))
     x2 = int(min(x2, meta.width-1))
     y2 = int(min(y2, meta.height-1))
+
+    w = x2 - x1 + 1
+    h = y2 - y1 + 1
+
+    #
+    return pose_crop(meta, x1, y1 , w, h)
+
+# def crop_hand_roi(meta):
+#     global _network_w, _network_h
+#     target_size = (_network_w, _network_h)
+
+#     x1, y1, x2, y2 = get_hand_roi(meta)
+#     w = x2 - x1 + 1
+#     h = y2 - y1 + 1
+
+#     length = (w + h) // 2
+
+#     x1 -= length * random.random() * 3
+#     y1 -= length * random.random() * 3
+#     x2 += length * random.random() * 3
+#     y2 += length * random.random() * 3
+
+#     # x1 -= w * 2
+#     # y1 -= h * 2
+#     # x2 += w * 2
+#     # y2 += h * 2
+
+#     # make sure not to go over the image border
+#     x1 = int(max(x1, 0))
+#     y1 = int(max(y1, 0))
+#     x2 = int(min(x2, meta.width-1))
+#     y2 = int(min(y2, meta.height-1))
+
+#     w = x2 - x1 + 1
+#     h = y2 - y1 + 1
+
+#     #
+#     return pose_crop(meta, x1, y1 , w, h)
+
+def crop_hand_roi(meta):
+    global _network_w, _network_h
+    target_size = (_network_w, _network_h)
+
+    x1, y1, x2, y2 = get_hand_roi(meta)
+    hand_w = x2 - x1 + 1
+    hand_h = y2 - y1 + 1
+
+    x_shift_rng = max(target_size[0] - hand_w, 0)
+    y_shift_rng = max(target_size[1] - hand_h, 0)
+    
+    if random.random() >= 0.5:
+        x1 = int(x1 - random.random() * x_shift_rng)
+        y1 = int(y1 - random.random() * y_shift_rng)
+        x2 = x1 + target_size[0] - 1
+        y2 = y1 + target_size[1] - 1
+    else:
+        x2 = int(x2 + random.random() * x_shift_rng)
+        y2 = int(y2 + random.random() * y_shift_rng)
+        x1 = x2 - target_size[0] + 1
+        y1 = y2 - target_size[1] + 1
+    
+    # make sure not to go over the image border
+    # x1 = int(max(x1, 0))
+    # y1 = int(max(y1, 0))
+    # x2 = int(min(x2, meta.width-1))
+    # y2 = int(min(y2, meta.height-1))
+    left  = max(0 - x1, 0)
+    right = max(x2 - meta.width + 1, 0)
+    top   = max(0 - y1, 0)
+    btm   = max(y2 - meta.height + 1, 0) 
+    color = random.randint(0, 255)
+
+    # extend image if cropping will go over the borders
+    meta.img = cv2.copyMakeBorder(meta.img, top, btm, left, right, cv2.BORDER_CONSTANT, value=(color, 0, 0))
+    meta.width = meta.img.shape[1]
+    meta.height = meta.img.shape[0]
+
+    # adjust joints
+    adjust_joint_list = []
+    for point in meta.joint_list:
+        if point[0] < -100 or point[1] < -100:
+            adjust_joint_list.append((-1000, -1000))
+            continue
+        new_x, new_y = point[0] - left, point[1] - top
+        adjust_joint_list.append((new_x, new_y))
+
+    meta.joint_list = adjust_joint_list
+
+    # 
+    x1 = x1 + left
+    y1 = y1 + top
+    x2 = x2 + left
+    y2 = y2 + top
 
     w = x2 - x1 + 1
     h = y2 - y1 + 1

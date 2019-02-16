@@ -24,7 +24,6 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 parser = argparse.ArgumentParser(description='Training codes for Openpose using Tensorflow')
-parser.add_argument('--model', default='mobilenet_thin', help='model name')
 parser.add_argument('--datapath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/')
 parser.add_argument('--gpus', type=int, default=1)
 parser.add_argument('--max-epoch', type=int, default=30)
@@ -32,7 +31,7 @@ parser.add_argument('--max-epoch', type=int, default=30)
 parser.add_argument('--lr', type=str, default='0.01')
 parser.add_argument('--modelpath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-13/')
 parser.add_argument('--logpath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-13/')
-parser.add_argument('--checkpoint', type=str, default='')
+parser.add_argument('--checkpoint', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-13/mobilenet_thin_batch_8_lr_0.01_gpus_1_184x184_/')
 parser.add_argument('--tag', type=str, default='')
 args = parser.parse_args()
 
@@ -101,7 +100,7 @@ if __name__ == '__main__':
     config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
     with tf.Session(config=config) as sess:
         training_name = '{}_batch_{}_lr_{}_gpus_{}_{}x{}_{}'.format(
-            args.model,
+            common.model,
             common.batchsize,
             args.lr,
             args.gpus,
@@ -117,7 +116,7 @@ if __name__ == '__main__':
             # loader = tf.train.Saver(net.restorable_variables())
             # loader.restore(sess, tf.train.latest_checkpoint(args.checkpoint))
             saver.restore(sess, tf.train.latest_checkpoint(args.checkpoint))
-            logger.info('Restore from checkpoint...Done')
+            logger.info('Restore from checkpoint %s...Done' % tf.train.latest_checkpoint(args.checkpoint))
         elif pretrain_path:
             logger.info('Restore pretrained weights...')
             if '.ckpt' in pretrain_path:
@@ -134,11 +133,11 @@ if __name__ == '__main__':
         time_started = time.time()
         last_gs_num = last_gs_num2 = 0
         initial_gs_num = sess.run(global_step)
+        # get dataflow
+        df = get_dataflow_batch('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True, common.batchsize)
 
         for epoch in range(0, args.max_epoch):
-            # get dataflow
-            df = get_dataflow_batch('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True, common.batchsize)
-
+            
             #
             loss_history = []
             loss_history_ll = []
@@ -147,6 +146,12 @@ if __name__ == '__main__':
                 inp = dp[0].astype(np.float32)
                 heat = dp[1].astype(np.float32)
 
+                pred = sess.run([net.loss_last()], {'image:0': inp,
+                                                    'heatmap:0': heat})
+                # for batch in range(0, common.batchsize):
+                #     # OpenOoseHand.display_image(inp[batch], pred[0][batch].astype(np.float32))
+                #     OpenOoseHand.display_image(inp[batch], heat[batch])
+
                 _, gs_num = sess.run([train_op, global_step], {'image:0': inp,
                                                                'heatmap:0': heat})
                 if (gs_num - last_gs_num) % 5 == 0:                                            
@@ -154,12 +159,12 @@ if __name__ == '__main__':
                     loss_history.append(train_loss)
                     loss_history_ll.append(train_loss_ll)
                 if gs_num - last_gs_num >= 100:
-                    train_loss, train_loss_ll, lr_val, summary = sess.run([total_loss, total_loss_ll, learning_rate, merged_summary_op], 
+                    lr_val, summary = sess.run([learning_rate, merged_summary_op], 
                                                                           {'image:0': inp, 'heatmap:0': heat})
-                    loss_history.append(train_loss)
-                    loss_history_ll.append(train_loss_ll)
                     train_loss = np.mean(loss_history)
                     train_loss_ll = np.mean(loss_history_ll)
+                    # loss_history = []
+                    # loss_history_ll = []
                     # log of training loss / accuracy
                     batch_per_sec = (gs_num - initial_gs_num) / (time.time() - time_started)
                     logger.info('epoch=%.2f step=%d, %0.4f examples/sec lr=%f, loss=%g, loss_ll=%g' % (gs_num / step_per_epoch, gs_num, batch_per_sec * common.batchsize, lr_val, train_loss, train_loss_ll))
