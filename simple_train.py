@@ -31,7 +31,7 @@ parser.add_argument('--max-epoch', type=int, default=30)
 parser.add_argument('--lr', type=str, default='0.01')
 parser.add_argument('--modelpath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-18/')
 parser.add_argument('--logpath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-18/')
-parser.add_argument('--checkpoint', type=str, default='')
+parser.add_argument('--checkpoint', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-18/mobilenet_thin_batch_8_lr_0.01_gpus_1_184x184_/')
 parser.add_argument('--tag', type=str, default='')
 args = parser.parse_args()
 
