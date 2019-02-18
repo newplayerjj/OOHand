@@ -4,6 +4,7 @@ from os.path import dirname, abspath
 import tensorflow as tf
 
 from openpose_mob_thin import MobilenetNetworkThin
+from openpose_hand_model import OpenPoseHand
 
 import common
 
@@ -19,6 +20,10 @@ def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
         net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
         pretrain_path = 'D:/wzchen/PythonProj/tf-openpose/models/pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
+    elif type == 'openposehand':
+        net = OpenPoseHand({'image': placeholder_input}, trainable=trainable)
+        pretrain_path = 'D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-13/openposehand/'
+        last_layer = 'Mconv7_stage6'
     else:
         raise Exception('Invalid Mode.')
 

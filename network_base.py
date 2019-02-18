@@ -231,7 +231,9 @@ class BaseNetwork(object):
              padding=DEFAULT_PADDING,
              group=1,
              trainable=True,
-             biased=True):
+             biased=True,
+             kernel_name='weights',
+             bias_name='biases'):
         # Verify that the padding is acceptable
         self.validate_padding(padding)
         # Get the number of channels in the input
@@ -242,7 +244,8 @@ class BaseNetwork(object):
         # Convolution for a given input and kernel
         convolve = lambda i, k: tf.nn.conv2d(i, k, [1, s_h, s_w, 1], padding=padding)
         with tf.variable_scope(name) as scope:
-            kernel = self.make_var('weights', shape=[k_h, k_w, c_i / group, c_o], trainable=self.trainable & trainable)
+            # kernel = self.make_var('weights', shape=[k_h, k_w, c_i / group, c_o], trainable=self.trainable & trainable)
+            kernel = self.make_var(kernel_name, shape=[k_h, k_w, c_i / group, c_o], trainable=self.trainable & trainable)
             if group == 1:
                 # This is the common-case. Convolve the input without any further complications.
                 output = convolve(input, kernel)
@@ -255,7 +258,8 @@ class BaseNetwork(object):
                 output = tf.concat(3, output_groups)
             # Add the biases
             if biased:
-                biases = self.make_var('biases', [c_o], trainable=self.trainable & trainable)
+                # biases = self.make_var('biases', [c_o], trainable=self.trainable & trainable)
+                biases = self.make_var(bias_name, [c_o], trainable=self.trainable & trainable)
                 output = tf.nn.bias_add(output, biases)
 
             if relu:

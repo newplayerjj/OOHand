@@ -12,8 +12,8 @@ activation_fn = tf.nn.relu
 num_hand_parts = 22
 
 batchsize = 8
-network_w = 368
-network_h = 368
+network_w = 184
+network_h = 184
 
 model = 'mobilenet_thin'
 network_scale = 8

@@ -29,7 +29,7 @@ from tensorpack.dataflow.parallel import PrefetchData
 from tensorpack.dataflow.base import RNGDataFlow, DataFlowTerminated
 
 from pose_augment import pose_flip, pose_rotation, pose_to_img, pose_crop_random, \
-    pose_resize_shortestedge_random, pose_resize_shortestedge_fixed, pose_crop_center, pose_random_scale, crop_hand_roi_big, crop_hand_roi
+    pose_resize_shortestedge_random, pose_resize_shortestedge_fixed, pose_crop_center, pose_random_scale, hand_random_scale, crop_hand_roi_big, crop_hand_roi
 
 import common
 
@@ -100,6 +100,16 @@ class OOHandMataData:
                     continue
                 heatmap[plane_idx][y][x] = max(heatmap[plane_idx][y][x], math.exp(-exp))
                 heatmap[plane_idx][y][x] = min(heatmap[plane_idx][y][x], 1.0)
+
+class MPIIModified(RNGDataFlow):
+    def __init__(self, root_path, is_train):
+        self.is_train = is_train
+        self.root_path = root_path
+        self.test_data_path = os.path.join(self.root_path,'manual_test')
+        self.train_data_path = os.path.join(self.root_path,'manual_train')
+
+        self.meta_list = data['root']
+        self.prefix_zeros = 8
 
 class OpenOoseHand(RNGDataFlow):
     @staticmethod
@@ -244,7 +254,7 @@ def get_dataflow(path, is_train, img_path=None):
 
         ds = MapData(ds, read_image_url)
         ds = MapDataComponent(ds, crop_hand_roi_big)
-        ds = MapDataComponent(ds, pose_random_scale)
+        ds = MapDataComponent(ds, hand_random_scale)
         ds = MapDataComponent(ds, pose_rotation)
         ds = MapDataComponent(ds, pose_flip)
         ds = MapDataComponent(ds, crop_hand_roi)
@@ -267,7 +277,7 @@ def _get_dataflow_onlyread(path, is_train, img_path=None):
     ds = OpenOoseHand(path, is_train)  # read data from lmdb
     ds = MapData(ds, read_image_url)
     ds = MapDataComponent(ds, crop_hand_roi_big)
-    ds = MapDataComponent(ds, pose_random_scale)
+    ds = MapDataComponent(ds, hand_random_scale)
     ds = MapDataComponent(ds, pose_rotation)
     ds = MapDataComponent(ds, pose_flip)
     ds = MapDataComponent(ds, crop_hand_roi)

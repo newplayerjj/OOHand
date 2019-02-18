@@ -155,10 +155,10 @@ def interchange_yx_to_xy_and_normalize(parts, img_w, img_h):
             y, x = parts[part_id][cid]
             parts[part_id][cid] = (x/float(img_w), y/float(img_h))
 
-def draw_parts(image, parts, circle_color=(0,127,0), font_color=(0,255,0), font_scale=0.3):
+def draw_parts(image, parts, circle_color=(0,127,0), font_color=(0,255,0), radius=10, font_scale=0.3):
     for part_id  in range(len(parts)):
         for coord in parts[part_id]:
-            cv2.circle(image, coord, 10, circle_color)
+            cv2.circle(image, coord, radius, circle_color)
             cv2.putText(image, str(part_id), coord, cv2.FONT_HERSHEY_COMPLEX, font_scale, font_color)
 
 def fastMax(a, b):
@@ -310,7 +310,7 @@ class HandPose:
         interchange_yx_to_xy_and_scale(parts, self.netscale)  
         
         if show_pred:
-            draw_parts(image, parts, (0,127,0), (0,255,0))
+            draw_parts(image, parts, (0,127,0), (0,255,0), radius=3, font_scale=0.3)
 
             if show_removed:
                 interchange_yx_to_xy_and_scale(deleted_parts, self.netscale)  
@@ -378,7 +378,8 @@ class HandPose:
 
 from pose_augment import set_network_input_wh, set_network_scale
 
-model_path = 'D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-13/mobilenet_thin_batch_8_lr_0.01_gpus_1_184x184_/'
+model_path = 'D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-18/mobilenet_thin_batch_8_lr_0.01_gpus_1_184x184_/'
+# model_path = 'D:/wzchen/PythonProj/keras-openpose/checkpoints'
 net_w = net_h = 184
 scale = 8
 
@@ -408,3 +409,28 @@ if __name__ == '__main__':
             inp = dp[0]
 
             handpredictor.predict(inp, 1, True)
+
+# if __name__ == '__main__':
+#     from networks import get_network
+#     from pose_dataset import _get_dataflow_onlyread, OpenOoseHand
+
+#     input_node = tf.placeholder(tf.float32, shape=(1, net_h, net_w, 3), name='image')
+#     net, pretrain_path, last_layer = get_network('openposehand', input_node)
+#     net_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+
+#     handpredictor = HandPose(input_node, net.loss_last(), scale, net_var_list)
+
+#     print('load from: '+tf.train.latest_checkpoint(model_path))
+#     handpredictor.load_weights(tf.train.latest_checkpoint(model_path))
+
+#     df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
+
+#     with handpredictor.sess as sess:
+#         df.reset_state()
+
+#         for idx, dp in enumerate(df.get_data()):
+#             # inp = np.expand_dims(dp[0], 0)
+#             # heat = np.expand_dims(dp[1], 0)
+#             inp = dp[0]
+
+#             handpredictor.predict(inp, 1, True)

@@ -297,8 +297,10 @@ def crop_hand_roi_big(meta):
     cx = x1 + w // 2
     cy = y1 + h // 2
 
-    w = max(random.random() * w * 3 + 2, target_size[0]*2)
-    h = max(random.random() * h * 3 + h, target_size[1]*2)
+    # w = max(random.random() * w * 3 + w, target_size[0]*3)
+    # h = max(random.random() * h * 3 + h, target_size[1]*3)
+    w = target_size[0]*5
+    h = target_size[1]*5
 
     x1 = cx - w // 2
     y1 = cy - h // 2
@@ -348,6 +350,67 @@ def crop_hand_roi_big(meta):
 #     #
 #     return pose_crop(meta, x1, y1 , w, h)
 
+# def crop_hand_roi(meta):
+#     global _network_w, _network_h
+#     target_size = (_network_w, _network_h)
+
+#     x1, y1, x2, y2 = get_hand_roi(meta)
+#     hand_w = x2 - x1 + 1
+#     hand_h = y2 - y1 + 1
+
+#     x_shift_rng = max(target_size[0] - hand_w, 0)
+#     y_shift_rng = max(target_size[1] - hand_h, 0)
+    
+#     if random.random() >= 0.5:
+#         x1 = int(x1 - random.random() * x_shift_rng)
+#         y1 = int(y1 - random.random() * y_shift_rng)
+#         x2 = x1 + target_size[0] - 1
+#         y2 = y1 + target_size[1] - 1
+#     else:
+#         x2 = int(x2 + random.random() * x_shift_rng)
+#         y2 = int(y2 + random.random() * y_shift_rng)
+#         x1 = x2 - target_size[0] + 1
+#         y1 = y2 - target_size[1] + 1
+    
+#     # make sure not to go over the image border
+#     # x1 = int(max(x1, 0))
+#     # y1 = int(max(y1, 0))
+#     # x2 = int(min(x2, meta.width-1))
+#     # y2 = int(min(y2, meta.height-1))
+#     left  = max(0 - x1, 0)
+#     right = max(x2 - meta.width + 1, 0)
+#     top   = max(0 - y1, 0)
+#     btm   = max(y2 - meta.height + 1, 0) 
+#     color = random.randint(0, 255)
+
+#     # extend image if cropping will go over the borders
+#     meta.img = cv2.copyMakeBorder(meta.img, top, btm, left, right, cv2.BORDER_CONSTANT, value=(color, 0, 0))
+#     meta.width = meta.img.shape[1]
+#     meta.height = meta.img.shape[0]
+
+#     # adjust joints
+#     adjust_joint_list = []
+#     for point in meta.joint_list:
+#         if point[0] < -100 or point[1] < -100:
+#             adjust_joint_list.append((-1000, -1000))
+#             continue
+#         new_x, new_y = point[0] - left, point[1] - top
+#         adjust_joint_list.append((new_x, new_y))
+
+#     meta.joint_list = adjust_joint_list
+
+#     # 
+#     x1 = x1 + left
+#     y1 = y1 + top
+#     x2 = x2 + left
+#     y2 = y2 + top
+
+#     w = x2 - x1 + 1
+#     h = y2 - y1 + 1
+
+#     #
+#     return pose_crop(meta, x1, y1 , w, h)
+
 def crop_hand_roi(meta):
     global _network_w, _network_h
     target_size = (_network_w, _network_h)
@@ -356,19 +419,36 @@ def crop_hand_roi(meta):
     hand_w = x2 - x1 + 1
     hand_h = y2 - y1 + 1
 
-    x_shift_rng = max(target_size[0] - hand_w, 0)
-    y_shift_rng = max(target_size[1] - hand_h, 0)
+    ## roi decide cx cy
+    cx = (x1 + x2) // 2
+    cy = (y1 + y2) // 2
+    ## wrist decide cx cy 
+    # cx = meta.joint_list[0][0]
+    # cy = meta.joint_list[0][1]
+
+    max_length = max(hand_w, hand_h)
+    max_length = min(max_length, 40) # for 184x184
+    max_length = max(max_length, 5)
+
+    cx = int(cx + (random.random() - 0.5) * max_length)
+    cy = int(cy + (random.random() - 0.5) * max_length) 
+
+    x1 = cx - target_size[0] // 2
+    y1 = cy - target_size[1] // 2
+    x2 = x1 + target_size[0] - 1
+    y2 = y1 + target_size[1] - 1
+
     
-    if random.random() >= 0.5:
-        x1 = int(x1 - random.random() * x_shift_rng)
-        y1 = int(y1 - random.random() * y_shift_rng)
-        x2 = x1 + target_size[0] - 1
-        y2 = y1 + target_size[1] - 1
-    else:
-        x2 = int(x2 + random.random() * x_shift_rng)
-        y2 = int(y2 + random.random() * y_shift_rng)
-        x1 = x2 - target_size[0] + 1
-        y1 = y2 - target_size[1] + 1
+    # if random.random() >= 0.5:
+    #     x1 = int(x1 - random.random() * x_shift_rng)
+    #     y1 = int(y1 - random.random() * y_shift_rng)
+    #     x2 = x1 + target_size[0] - 1
+    #     y2 = y1 + target_size[1] - 1
+    # else:
+    #     x2 = int(x2 + random.random() * x_shift_rng)
+    #     y2 = int(y2 + random.random() * y_shift_rng)
+    #     x1 = x2 - target_size[0] + 1
+    #     y1 = y2 - target_size[1] + 1
     
     # make sure not to go over the image border
     # x1 = int(max(x1, 0))
@@ -408,3 +488,43 @@ def crop_hand_roi(meta):
 
     #
     return pose_crop(meta, x1, y1 , w, h)
+
+def hand_random_scale(meta):
+    global _network_w, _network_h
+    target_size = (_network_w, _network_h)
+
+    x1, y1, x2, y2 = get_hand_roi(meta)
+    hand_w = x2 - x1 + 1
+    hand_h = y2 - y1 + 1
+
+    length = max(hand_w, hand_h)
+    net_length = max(target_size[0], target_size[1])
+
+    # 1.7 ~ 2.5
+    random_target_ratio = (random.random() * 0.8) + 1.7
+    # calculate scale
+    target_length       = net_length / random_target_ratio
+    scale               = target_length / length
+
+    scalew = scale
+    scaleh = scale
+    neww = int(meta.width * scalew)
+    newh = int(meta.height * scaleh)
+    dst = cv2.resize(meta.img, (neww, newh), interpolation=cv2.INTER_AREA)
+
+    # adjust meta data
+    adjust_joint_list = []
+    for point in meta.joint_list:
+        if point[0] < -100 or point[1] < -100:
+            adjust_joint_list.append((-1000, -1000))
+            continue
+        # if point[0] <= 0 or point[1] <= 0 or int(point[0] * scalew + 0.5) > neww or int(
+        #                         point[1] * scaleh + 0.5) > newh:
+        #     adjust_joint_list.append((-1, -1))
+        #     continue
+        adjust_joint_list.append((int(point[0] * scalew + 0.5), int(point[1] * scaleh + 0.5)))
+
+    meta.joint_list = adjust_joint_list
+    meta.width, meta.height = neww, newh
+    meta.img = dst
+    return meta
