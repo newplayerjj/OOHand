@@ -18,11 +18,16 @@ def _get_base_path():
 def get_network(type, placeholder_input, sess_for_load=None, trainable=True):
     if type == 'mobilenet_thin':
         net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.75, conv_width2=0.50, trainable=trainable)
+        # net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=0.50, conv_width2=0.50, trainable=trainable)
+        pretrain_path = 'D:/wzchen/PythonProj/tf-openpose/models/pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
+        last_layer = 'MConv_Stage6_L{aux}_5'
+    elif type == 'mobilenet_thin_full':
+        net = MobilenetNetworkThin({'image': placeholder_input}, conv_width=1.0, conv_width2=1.0, trainable=trainable)
         pretrain_path = 'D:/wzchen/PythonProj/tf-openpose/models/pretrained/mobilenet_v1_0.75_224_2017_06_14/mobilenet_v1_0.75_224.ckpt'
         last_layer = 'MConv_Stage6_L{aux}_5'
     elif type == 'openposehand':
         net = OpenPoseHand({'image': placeholder_input}, trainable=trainable)
-        pretrain_path = 'D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-13/openposehand/'
+        pretrain_path = './openposehand_pretrain/'
         last_layer = 'Mconv7_stage6'
     else:
         raise Exception('Invalid Mode.')
@@ -96,7 +101,7 @@ if __name__ == '__main__':
         input_node = tf.placeholder(tf.float32, shape=(common.batchsize, common.network_h, common.network_w, 3), name='image')
         heatmap_node = tf.placeholder(tf.float32, shape=(common.batchsize, output_h, output_w, common.num_hand_parts), name='heatmap')
         
-        df = get_dataflow_batch('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True, common.batchsize)
+        df = get_dataflow_batch('./hand143_panopticdb/', True, common.batchsize)
         
         enqueuer = DataFlowToQueue(df, [input_node, heatmap_node], queue_size=2)
         q_inp, q_heat = enqueuer.dequeue()

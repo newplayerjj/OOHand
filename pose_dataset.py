@@ -166,24 +166,27 @@ class OpenOoseHand(RNGDataFlow):
 
     def get_data(self):
         idxs = np.arange(self.size())
-        if self.is_train:
-            self.rng.shuffle(idxs)
-        else:
-            pass
 
-        for idx in idxs:
-            meta_data = self.meta_list[idx]
-            img_path = os.path.join(self.root_path, meta_data['img_paths'])
-            img_meta = {'height': meta_data['img_height'],
-                        'width': meta_data['img_width']}
+        while True:
+            if self.is_train:
+                self.rng.shuffle(idxs)
+            else:
+                pass
 
-            meta = OOHandMataData(idx, img_path, img_meta, meta_data['joint_self'], sigma=8.0)
+            for idx in idxs:
+                meta_data = self.meta_list[idx]
+                img_path = os.path.join(self.root_path, meta_data['img_paths'])
+                img_meta = {'height': meta_data['img_height'],
+                            'width': meta_data['img_width']}
 
-            total_keypoints = len(meta_data['joint_self'])
-            if total_keypoints == 0 and random.uniform(0, 1) > 0.2:
-                continue
+                meta = OOHandMataData(idx, img_path, img_meta, meta_data['joint_self'], sigma=8.0)
 
-            yield [meta]
+                total_keypoints = len(meta_data['joint_self'])
+                if total_keypoints == 0 and random.uniform(0, 1) > 0.2:
+                    continue
+
+                yield [meta]
+
 
 def read_image_url(metas):
     for meta in metas:
@@ -284,8 +287,7 @@ def _get_dataflow_onlyread(path, is_train, img_path=None):
     # ds = MapDataComponent(ds, pose_resize_shortestedge_fixed)
     # ds = MapDataComponent(ds, pose_crop_random)
     ds = MapData(ds, pose_to_img)
-    # ds = PrefetchData(ds, 10, 2)
-    ds = RepeatedData(ds, -1)
+    ds = PrefetchData(ds, 10, 2)
     return ds
 
 
@@ -293,7 +295,6 @@ def get_dataflow_batch(path, is_train, batchsize, img_path=None):
     logger.info('dataflow img_path=%s' % img_path)
     ds = get_dataflow(path, is_train, img_path=img_path)
     ds = BatchData(ds, batchsize)
-    ds = RepeatedData(ds, -1)
     if is_train:
         ds = PrefetchData(ds, batchsize*2, 1)
     else:
@@ -389,7 +390,7 @@ def test_enqueuer():
         input_node = tf.placeholder(tf.float32, shape=(args.batchsize, args.input_height, args.input_width, 3), name='image')
         heatmap_node = tf.placeholder(tf.float32, shape=(args.batchsize, output_h, output_w, common.num_hand_parts), name='heatmap')
         
-        df = get_dataflow_batch('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True, args.batchsize)
+        df = get_dataflow_batch('./hand143_panopticdb/', True, args.batchsize)
         
         enqueuer = DataFlowToQueue(df, [input_node, heatmap_node], queue_size=2)
         q_inp, q_heat = enqueuer.dequeue()
@@ -415,9 +416,9 @@ def test_enqueuer():
 def test_data_flow():
     os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
-    # df = get_dataflow('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
-    df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
-    # df = get_dataflow('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', False)
+    # df = get_dataflow('./hand143_panopticdb/', True)
+    df = _get_dataflow_onlyread('./hand143_panopticdb/', True)
+    # df = get_dataflow('./hand143_panopticdb/', False)
 
     # from tensorpack.dataflow.common import TestDataSpeed
     # TestDataSpeed(df).start()

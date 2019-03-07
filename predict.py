@@ -378,7 +378,7 @@ class HandPose:
 
 from pose_augment import set_network_input_wh, set_network_scale
 
-model_path = 'D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-18/mobilenet_thin_batch_8_lr_0.01_gpus_1_184x184_/'
+model_path = './2018-2-23/mobilenet_thin_batch_8_lr_0.01_gpus_1_184x184_/'
 # model_path = 'D:/wzchen/PythonProj/keras-openpose/checkpoints'
 net_w = net_h = 184
 scale = 8
@@ -398,7 +398,7 @@ if __name__ == '__main__':
     print('load from: '+tf.train.latest_checkpoint(model_path))
     handpredictor.load_weights(tf.train.latest_checkpoint(model_path))
 
-    df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
+    df = _get_dataflow_onlyread('./hand143_panopticdb/', True)
 
     with handpredictor.sess as sess:
         df.reset_state()
@@ -407,6 +407,9 @@ if __name__ == '__main__':
             # inp = np.expand_dims(dp[0], 0)
             # heat = np.expand_dims(dp[1], 0)
             inp = dp[0]
+
+            if idx < 1000:
+                continue
 
             handpredictor.predict(inp, 1, True)
 
@@ -423,7 +426,7 @@ if __name__ == '__main__':
 #     print('load from: '+tf.train.latest_checkpoint(model_path))
 #     handpredictor.load_weights(tf.train.latest_checkpoint(model_path))
 
-#     df = _get_dataflow_onlyread('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True)
+#     df = _get_dataflow_onlyread('./hand143_panopticdb/', True)
 
 #     with handpredictor.sess as sess:
 #         df.reset_state()

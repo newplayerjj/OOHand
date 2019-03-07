@@ -1,0 +1,13 @@
+*.meta
+*.index
+*.data*
+*.mp4
+*.jpg
+*.bmp
+*.png
+tf-openpose-models-2018-2-13/*
+tf-openpose-models-2018-2-18/*
+tf-openpose-models-2018-2/*
+hand143_panopticdb/*
+2018-2-23/*
+2018-2-19/*

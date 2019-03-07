@@ -24,14 +24,14 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 parser = argparse.ArgumentParser(description='Training codes for Openpose using Tensorflow')
-parser.add_argument('--datapath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/')
+parser.add_argument('--datapath', type=str, default='./hand143_panopticdb/')
 parser.add_argument('--gpus', type=int, default=1)
-parser.add_argument('--max-epoch', type=int, default=30)
+parser.add_argument('--max-epoch', type=int, default=100)
 # --lr give initial learning rate
 parser.add_argument('--lr', type=str, default='0.01')
-parser.add_argument('--modelpath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-18/')
-parser.add_argument('--logpath', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-18/')
-parser.add_argument('--checkpoint', type=str, default='D:/wzchen/PythonProj/cwz_handpose/tf-openpose-models-2018-2-18/mobilenet_thin_batch_8_lr_0.01_gpus_1_184x184_/')
+parser.add_argument('--modelpath', type=str, default='./2018-2-23/')
+parser.add_argument('--logpath', type=str, default='./2018-2-23/')
+parser.add_argument('--checkpoint', type=str, default='./2018-2-23/mobilenet_thin_batch_8_lr_0.01_gpus_1_184x184_')
 parser.add_argument('--tag', type=str, default='')
 args = parser.parse_args()
 
@@ -45,7 +45,7 @@ if __name__ == '__main__':
         heatmap_node = tf.placeholder(tf.float32, shape=(common.batchsize, output_h, output_w, common.num_hand_parts), name='heatmap')
         
     # get dataflow
-    # df = get_dataflow_batch('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True, common.batchsize)
+    # df = get_dataflow_batch('./hand143_panopticdb/', True, common.batchsize)
 
     # get network output
     net, pretrain_path, last_layer = get_network(common.model, input_node)
@@ -134,7 +134,7 @@ if __name__ == '__main__':
         last_gs_num = last_gs_num2 = 0
         initial_gs_num = sess.run(global_step)
         # get dataflow
-        df = get_dataflow_batch('D:/wzchen/PythonProj/cwz_handpose/hand143_panopticdb/', True, common.batchsize)
+        df = get_dataflow_batch('./hand143_panopticdb/', True, common.batchsize)
 
         for epoch in range(0, args.max_epoch):
             
