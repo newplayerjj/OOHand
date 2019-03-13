@@ -1,8 +1,0 @@
-pose_augment.py
-    set_network w, h, scale 在多執行序(有PrefetchData) 就會無效
-    (似乎會設到不同的記憶體位置上, 必須在開始時就從common import正確的初始值)
-
-
-simple_train.py
-    還沒有加 regularization loss
-    還是可以用 DataEnqueuer 加速
